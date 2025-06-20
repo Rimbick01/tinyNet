@@ -142,7 +142,6 @@ if __name__ == "__main__":
   img /= 256
   img -= np.array([0.485, 0.456, 0.406]).reshape((1,-1,1,1))
   img /= np.array([0.229, 0.224, 0.225]).reshape((1,-1,1,1))
-  #img*=0
 
   # if you want to look at the cat
   '''
@@ -152,9 +151,7 @@ if __name__ == "__main__":
   '''
   # category labels
   import ast
-  #lbls = fetch("https://gist.githubusercontent.com/aaronpolhamus/964a4411c0906315deb9f4a3723aac57/raw/aa66dd9dbf6b56649fa3fab83659b2acbf3cbfd1/map_clsloc.txt")
   lbls = fetch("https://gist.githubusercontent.com/yrevar/942d3a0ac09ec9e5eb3a/raw/238f720ff059c1f82f368259d1ca4ffa5dd8f9f5/imagenet1000_clsidx_to_labels.txt")
-  #lbls = dict([(int(x.split(" ")[1]), x.split(" ")[2]) for x in lbls.decode('utf-8').split("\n")])
   lbls = ast.literal_eval(lbls.decode('utf-8'))
 
   # run the net
