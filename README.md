@@ -26,3 +26,4 @@ A clean, educational implementation of EfficientNet using Tinygrad. This project
 
 ### TODO
   * Add cuda support
+  * Add more example
