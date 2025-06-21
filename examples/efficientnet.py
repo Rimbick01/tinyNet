@@ -157,8 +157,8 @@ if __name__ == "__main__":
     else:
       pad_left = (224 - img.shape[1]) // 2
       pad_right = 224 - img.shape[1] - pad_left
-      cropped = np.pad(img, ((0, 0), (pad_left, pad_right), (0, 0)),mode='constant', constant_values=0)
-    img = cropped.astype(np.float32) / 255.0
+     chapo = np.pad(img, ((0, 0), (pad_left, pad_right), (0, 0)),mode='constant', constant_values=0)
+    img = chapo.astype(np.float32) / 255.0
     mean = np.array([0.485, 0.456, 0.406]).reshape(1, 1, 3)
     std = np.array([0.229, 0.224, 0.225]).reshape(1, 1, 3)
     img = (img - mean) / std
