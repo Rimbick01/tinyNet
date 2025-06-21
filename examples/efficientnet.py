@@ -132,39 +132,29 @@ if __name__ == "__main__":
     url = "https://c.files.bbci.co.uk/12A9B/production/_111434467_gettyimages-1143489763.jpg"
   img = Image.open(io.BytesIO(fetch(url)))
   aspect_ratio = img.size[0]/img.size[1]
-  if (img.size[0]<800):
-    img = img.resize((int(224*aspect_ratio), 224))
-    print(img.size)
-    img = np.array(img)
-    chapo = (img.shape[1]-224)//2
-    img = img[:, chapo:chapo+224]
-    img = np.moveaxis(img, [2,0,1], [0,1,2])
-    img = img.astype(np.float32).reshape(1,3,224,224)
-    img /= 256
-    img -= np.array([0.485, 0.456, 0.406]).reshape((1,-1,1,1))
-    img /= np.array([0.229, 0.224, 0.225]).reshape((1,-1,1,1))
+  img = img.resize((int(img.size[0]*aspect_ratio), img.size[1]))
+  print(img.size)
+  img = np.array(img)
+  if img.ndim == 2:
+    img = np.stack((arr,)*3, axis=-1)
   else:
-    img = img.resize((int(img.size[0]*aspect_ratio), img.size[1]))
-    print(img.size)
-    img = np.array(img)
-    if img.ndim == 2:
-      img = np.stack((arr,)*3, axis=-1)
-    else:
-      img = img[..., :3]
-    if img.shape[1] >= 224:
-      start_x = (img.shape[1] - 224) // 2
-      chapo = img[:, start_x:start_x+224]
-    else:
-      pad_left = (224 - img.shape[1]) // 2
-      pad_right = 224 - img.shape[1] - pad_left
-      chapo = np.pad(img, ((0, 0), (pad_left, pad_right), (0, 0)),mode='constant', constant_values=0)
-    img = chapo.astype(np.float32) 
-    img /= 256.0
-    mean = np.array([0.485, 0.456, 0.406]).reshape(1, 1, 3)
-    std = np.array([0.229, 0.224, 0.225]).reshape(1, 1, 3)
-    img = (img - mean) / std
-    img = img.transpose(2, 0, 1)
-    img = img[np.newaxis]
+    img = img[..., :3]
+  if img.shape[1] >= 224:
+    start_x = (img.shape[1] - 224) // 2
+    chapo = img[:, start_x:start_x+224]
+  else:
+    pad_left = (224 - img.shape[1]) // 2
+    pad_right = 224 - img.shape[1] - pad_left
+    chapo = np.pad(img, ((0, 0), (pad_left, pad_right), (0, 0)))
+  if chapo.shape[0] != 224 or chapo.shape[1] != 224:
+    chapo = chapo[:224, :224, :]
+  img = chapo.astype(np.float32) 
+  img /= 255.0
+  mean = np.array([0.485, 0.456, 0.406]).reshape(1, 1, 3)
+  std = np.array([0.229, 0.224, 0.225]).reshape(1, 1, 3)
+  img = (img - mean) / std
+  img = img.transpose(2, 0, 1)
+  img = img[np.newaxis]
 
   # if you want to look at the cat
   '''
