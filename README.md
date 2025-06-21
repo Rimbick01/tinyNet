@@ -24,3 +24,5 @@ A clean, educational implementation of EfficientNet using Tinygrad. This project
 - 🌱 Simple preprocessing pipeline
 - 📦 < 200 lines of core implementation
 
+### TODO
+  * Add cuda support
