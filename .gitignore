@@ -1,0 +1,10 @@
+# watch out for those pesky .DS_Store & binary files
+data
+python/data
+python/venv
+.vscode
+mnist_data
+/examples/models
+test
+/tinygrad/__pycache__
+*.swp
