@@ -2,24 +2,38 @@
 from functools import partialmethod
 from inspect import signature
 import numpy as np
+try:
+  import pyopencl as cl
+  cl_ctx = cl.create_some_context(answers=[0])
+  cl_queue = cl.CommandQueue(cl_ctx)
+except ImportError:
+  pass
 
 # **** start with two base classes ****
 
 class Tensor:
   did_float_warning = False
 
-  def __init__(self, data):
+  def __init__(self, data, shape=None):
     if isinstance(data, list):
       data = np.array(data, dtype=np.float32)
+
+    elif isinstance(data, cl._cl.Buffer):
+      self.gpu = True
+      shape=[data.size//4]
     elif not isinstance(data, np.ndarray):
       raise TypeError("Error constructing tensor with %r" % data)
 
-    if data.dtype != np.float32 and not Tensor.did_float_warning:
-      # warning? float64 is actually needed for numerical jacobian
-      print("warning, %r isn't float32" % (data.shape,))
-      Tensor.did_float_warning = True
+    if isinstance(data, np.ndarray):
+      shape=data.shape
+      if data.dtype != np.float32 and not Tensor.did_float_warning:
+        # warning? float64 is actually needed for numerical jacobian
+        print("warning, %r isn't float32" % (data.shape,))
+        Tensor.did_float_warning = True
+      self.gpu = False
 
     self.data = data
+    self.shape = shape
     self.grad = None
 
     # internal variables used for autograd graph construction
@@ -28,13 +42,13 @@ class Tensor:
   def __repr__(self):
     return "Tensor %r with grad %r" % (self.data, self.grad)
 
-  @property
-  def shape(self):
-    return self.data.shape
-
   @staticmethod
   def zeros(*shape):
     return Tensor(np.zeros(shape, dtype=np.float32))
+
+  @staticmethod
+  def ones(*shape):
+    return Tensor(np.ones(shape, dtype=np.float32))
 
   @staticmethod
   def randn(*shape):
@@ -43,6 +57,21 @@ class Tensor:
   @staticmethod
   def eye(dim):
     return Tensor(np.eye(dim).astype(np.float32))
+
+  def cpu(self):
+    if self.gpu:
+      data = np.empty(self.shape, dtype=np.float32)
+      cl.enqueue_copy(cl_queue, data, self.data)
+      self.data=data
+      self.gpu=False
+    return self
+
+  def cuda(self):
+    if not self.gpu:
+      assert self.data.dtype == np.float32
+      self.data = cl.Buffer(cl_ctx, cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR, hostbuf=self.data)
+      self.gpu=True
+    return self
 
   def backward(self, allow_fill=True):
     #print("running backward on", self)
@@ -86,6 +115,8 @@ class Tensor:
 
 # An instantiation of the Function is the Context
 class Function:
+  cl_ctx = cl_ctx
+  cl_queue = cl_queue
   def __init__(self, *tensors):
     self.parents = tensors
     self.saved_tensors = []
@@ -115,9 +146,10 @@ class Function:
     ret._ctx = ctx
     return ret
 
-def register(name, fxn):
+def register(name, fxn, gpu=False):
   setattr(Tensor, name, partialmethod(fxn.apply, fxn))
 
 # this registers all the operations
-import tinygrad.ops
+#import tinygrad.ops
+import tinygrad.opsgpu
 
