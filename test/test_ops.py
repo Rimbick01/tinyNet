@@ -11,9 +11,11 @@ def helper_test_op(shps, torch_fxn, tinygrad_fxn, atol=1e-7, grad_atol=1e-7,gpu=
   if gpu:
     tst = [x.cuda() for x in tst]
 
-  tinygrad_fxn = tst[0].__getattr__(tinygrad_fxn)
+  if type(tinygrad_fxn)==str:
+    lookup_fxn = tst[0].__getattr__(tinygrad_fxn)
+    tinygrad_fxn=lambda _,*x: lookup_fxn(*x)
   out = torch_fxn(*ts)
-  ret = tinygrad_fxn(*tst[1:])
+  ret = tinygrad_fxn(*tst)
 
   # TODO: why so inaccurate?
   np.testing.assert_allclose(ret.cpu().data, out.detach().numpy(), atol=atol)
@@ -27,7 +29,7 @@ def helper_test_op(shps, torch_fxn, tinygrad_fxn, atol=1e-7, grad_atol=1e-7,gpu=
 
   # speed
   torch_fp = timeit.Timer(functools.partial(torch_fxn, *ts)).timeit(5) * 1000/5
-  tinygrad_fp = timeit.Timer(functools.partial(tinygrad_fxn, *tst[1:])).timeit(5) * 1000/5
+  tinygrad_fp = timeit.Timer(functools.partial(tinygrad_fxn, *tst)).timeit(5) * 1000/5
 
   if not forward_only:
     torch_fbp = timeit.Timer(functools.partial(lambda f,x: f(*x).mean().backward(), torch_fxn, ts)).timeit(5) * 1000/5
@@ -48,11 +50,11 @@ class TestOps(unittest.TestCase):
     helper_test_op([(45,65), (45,65)], lambda x,y: x*y, "mul")
   def test_div(self):
     # TODO: why does this need more tolerance?
-    helper_test_op([(45,65), (45,65)], lambda x,y: x/y, "div", atol=5e-5, grad_atol=1e-5)
+    helper_test_op([(45,65), (45,65)], lambda x,y: x/y, Tensor.div, atol=5e-5, grad_atol=1e-5)
   def test_pow(self):
     helper_test_op([(45,65), (45,65)], lambda x,y: x**y, "pow")
   def test_sqrt(self):
-    helper_test_op([(45,65)], lambda x: x.sqrt(), "sqrt")
+    helper_test_op([(45,65)], lambda x: x.sqrt(), Tensor.sqrt)
 
   def test_conv2d(self):
     for bs in [1,8]:
