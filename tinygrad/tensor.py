@@ -1,5 +1,5 @@
 # inspired by https://github.com/karpathy/micrograd/blob/master/micrograd/engine.py
-from functools import partialmethod
+from functools import partial
 from inspect import signature
 import numpy as np
 try:
@@ -20,7 +20,6 @@ class Tensor:
 
     elif isinstance(data, cl._cl.Buffer):
       self.gpu = True
-      shape=[data.size//4]
     elif not isinstance(data, np.ndarray):
       raise TypeError("Error constructing tensor with %r" % data)
 
@@ -33,7 +32,6 @@ class Tensor:
       self.gpu = False
 
     self.data = data
-    self.shape = shape
     self.grad = None
 
     # internal variables used for autograd graph construction
@@ -41,6 +39,10 @@ class Tensor:
 
   def __repr__(self):
     return "Tensor %r with grad %r" % (self.data, self.grad)
+
+  @property
+  def shape(self):
+    return self.data.shape
 
   @staticmethod
   def zeros(*shape):
@@ -70,6 +72,7 @@ class Tensor:
     if not self.gpu:
       assert self.data.dtype == np.float32
       data = cl.Buffer(cl_ctx, cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR, hostbuf=self.data)
+      data.shape=self.shape
       return Tensor(data)
     else:
       return self
@@ -100,6 +103,15 @@ class Tensor:
       t.grad = g
       t.backward(False)
 
+  ops = {}
+  opsgpu = {}
+  def __getattr__(self, x):
+    if self.gpu:
+      fxn = Tensor.opsgpu[x]
+    else:
+      fxn = Tensor.ops[x]
+    return partial(fxn.apply, fxn, self)
+
   # ***** non first class ops *****
 
   def mean(self):
@@ -128,12 +140,8 @@ class Function:
   # note that due to how partialmethod works, self and arg are switched
   def apply(self, arg, *x, **kwargs):
     # support the args in both orders
-    if type(arg) == Tensor:
-      op = self
-      x = [arg]+list(x)
-    else:
-      op = arg
-      x = [self]+list(x)
+    op = self
+    x = [arg]+list(x)
     ctx = op(*x)
     # use default params
     params = signature(op.forward).parameters
@@ -148,9 +156,13 @@ class Function:
     return ret
 
 def register(name, fxn, gpu=False):
-  setattr(Tensor, name, partialmethod(fxn.apply, fxn))
+  if gpu:
+    Tensor.opsgpu[name] = fxn
+  else:
+    Tensor.ops[name] = fxn
+  #setattr(Tensor, name, partialmethod(fxn.apply, fxn))
 
 # this registers all the operations
-#import tinygrad.ops
+import tinygrad.ops
 import tinygrad.opsgpu
 
