@@ -5,7 +5,6 @@ python/venv
 .vscode
 mnist_data
 /examples/models
-test
 /tinygrad/__pycache__
 *.swp
 /notebook
