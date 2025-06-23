@@ -43,11 +43,13 @@ class TestOps(unittest.TestCase):
   def test_add(self):
     helper_test_op([(45,65), (45,65)], lambda x,y: x+y, "add")
   def test_add_gpu(self):
-    helper_test_op([(45,65), (45,65)], lambda x,y: x+y, "add",gpu=True, forward_only=True)
+    helper_test_op([(45,65), (45,65)], lambda x,y: x+y, "add",gpu=True)
   def test_sub(self):
     helper_test_op([(45,65), (45,65)], lambda x,y: x-y, "sub")
   def test_mul(self):
     helper_test_op([(45,65), (45,65)], lambda x,y: x*y, "mul")
+  def test_mul_gpu(self):
+    helper_test_op([(45,65), (45,65)], lambda x,y: x*y, "mul",gpu=True)
   def test_div(self):
     # TODO: why does this need more tolerance?
     helper_test_op([(45,65), (45,65)], lambda x,y: x/y, Tensor.div, atol=5e-5, grad_atol=1e-5)
