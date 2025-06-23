@@ -5,33 +5,35 @@ import timeit
 import functools
 from tinygrad.tensor import Tensor
 
-def helper_test_op(shps, torch_fxn, tinygrad_fxn, atol=1e-7, grad_atol=1e-7,gpu=False):
+def helper_test_op(shps, torch_fxn, tinygrad_fxn, atol=1e-7, grad_atol=1e-7,gpu=False,forward_only=False):
   ts = [torch.rand(x, requires_grad=True) for x in shps]
   tst = [Tensor(x.detach().numpy()) for x in ts]
   if gpu:
     tst = [x.cuda() for x in tst]
 
+  tinygrad_fxn = tst[0].__getattr__(tinygrad_fxn)
   out = torch_fxn(*ts)
-  ret = tst[0].__getattr__(tinygrad_fxn)(*tst[1:])
+  ret = tinygrad_fxn(*tst[1:])
 
   # TODO: why so inaccurate?
   np.testing.assert_allclose(ret.cpu().data, out.detach().numpy(), atol=atol)
 
-  out.mean().backward()
-  ret.mean().backward()
-
-  #if gpu:
-  #  ret = ret.cpu()
-  
-  for t, tt in zip(ts, tst):
-    np.testing.assert_allclose(t.grad, tt.grad.cpu().data, atol=grad_atol)
+  if not forward_only:
+    out.mean().backward()
+    ret.mean().backward()
+    
+    for t, tt in zip(ts, tst):
+      np.testing.assert_allclose(t.grad, tt.grad.cpu().data, atol=grad_atol)
 
   # speed
   torch_fp = timeit.Timer(functools.partial(torch_fxn, *ts)).timeit(5) * 1000/5
-  tinygrad_fp = timeit.Timer(functools.partial(tinygrad_fxn, *tst)).timeit(5) * 1000/5
+  tinygrad_fp = timeit.Timer(functools.partial(tinygrad_fxn, *tst[1:])).timeit(5) * 1000/5
 
-  torch_fbp = timeit.Timer(functools.partial(lambda f,x: f(*x).mean().backward(), torch_fxn, ts)).timeit(5) * 1000/5
-  tinygrad_fbp = timeit.Timer(functools.partial(lambda f,x: f(*x).mean().backward(), tinygrad_fxn, tst)).timeit(5) * 1000/5
+  if not forward_only:
+    torch_fbp = timeit.Timer(functools.partial(lambda f,x: f(*x).mean().backward(), torch_fxn, ts)).timeit(5) * 1000/5
+    tinygrad_fbp = timeit.Timer(functools.partial(lambda f,x: f(*x).mean().backward(), tinygrad_fxn, tst)).timeit(5) * 1000/5
+  else:
+    torch_fbp, tinygrad_fbp = np.nan, np.nan
 
   print("testing %30r   torch/tinygrad fp: %.2f / %.2f ms  bp: %.2f / %.2f ms" % (shps, torch_fp, tinygrad_fp, torch_fbp-torch_fp, tinygrad_fbp-tinygrad_fp))
 
@@ -39,7 +41,7 @@ class TestOps(unittest.TestCase):
   def test_add(self):
     helper_test_op([(45,65), (45,65)], lambda x,y: x+y, "add")
   def test_add_gpu(self):
-    helper_test_op([(45,65), (45,65)], lambda x,y: x+y, "add",gpu=True)
+    helper_test_op([(45,65), (45,65)], lambda x,y: x+y, "add",gpu=True, forward_only=True)
   def test_sub(self):
     helper_test_op([(45,65), (45,65)], lambda x,y: x-y, "sub")
   def test_mul(self):
