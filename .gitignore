@@ -9,3 +9,4 @@ test
 /tinygrad/__pycache__
 *.swp
 /notebook/.ipynb_checkpoints/
+/notebook
