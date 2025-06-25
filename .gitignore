@@ -8,4 +8,4 @@ mnist_data
 test
 /tinygrad/__pycache__
 *.swp
-/notebook
+/notebook/.ipynb_checkpoints/
