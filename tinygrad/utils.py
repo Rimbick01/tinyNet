@@ -10,23 +10,24 @@ def layer_init_uniform(*x):
   return ret.astype(np.float32)
 
 def fetch(url):
-  import requests, os, hashlib
-  fp = os.path.join("/tmp", hashlib.md5(url.encode('utf-8')).hexdigest())
+  import requests, os, hashlib, tempfile
+  fp = os.path.join(tempfile.gettempdir(), hashlib.md5(url.encode('utf-8')).hexdigest())    
   if os.path.isfile(fp):
     with open(fp, "rb") as f:
       dat = f.read()
   else:
+    dat = requests.get(url).content
     with open(fp, "wb") as f:
-      dat = requests.get(url).content
       f.write(dat)
+    os.rename(fp+".tmp", fp)
   return dat
 
 def fetch_mnist():
   import gzip
   parse = lambda dat: np.frombuffer(gzip.decompress(dat), dtype=np.uint8).copy()
-  X_train = parse(fetch("http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz"))[0x10:].reshape((-1, 28, 28))
-  Y_train = parse(fetch("http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz"))[8:]
-  X_test = parse(fetch("http://yann.lecun.com/exdb/mnist/t10k-images-idx3-ubyte.gz"))[0x10:].reshape((-1, 28, 28))
-  Y_test = parse(fetch("http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz"))[8:]
+  X_train = parse(fetch("https://storage.googleapis.com/cvdf-datasets/mnist/train-images-idx3-ubyte.gz"))[0x10:].reshape((-1, 28, 28))
+  Y_train = parse(fetch("https://storage.googleapis.com/cvdf-datasets/mnist/train-labels-idx1-ubyte.gz"))[8:]
+  X_test = parse(fetch("https://storage.googleapis.com/cvdf-datasets/mnist/train-images-idx3-ubyte.gz"))[0x10:].reshape((-1, 28, 28))
+  Y_test = parse(fetch("https://storage.googleapis.com/cvdf-datasets/mnist/train-labels-idx1-ubyte.gz"))[8:]
   return X_train, Y_train, X_test, Y_test
 
